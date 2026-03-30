@@ -11,6 +11,12 @@
   animation: spin 0.7s linear infinite;
 }
 
+.spinner--xs .spinner__ring {
+  width: 12px;
+  height: 12px;
+  border-width: 1.5px;
+}
+
 .spinner--sm .spinner__ring {
   width: 16px;
   height: 16px;

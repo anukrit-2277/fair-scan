@@ -59,6 +59,8 @@ const auditSchema = new mongoose.Schema(
       enum: ['low', 'medium', 'high', 'critical', null],
       default: null,
     },
+    sampleRows: mongoose.Schema.Types.Mixed,
+    columnNames: [String],
     completedAt: Date,
     error: String,
   },

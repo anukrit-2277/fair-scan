@@ -10,6 +10,8 @@ const auditService = {
   getReport: (id) => api.get(`/audits/${id}/report`),
 
   remove: (id) => api.delete(`/audits/${id}`),
+
+  explainRow: (id, rowIndex) => api.post(`/audits/${id}/explain`, { rowIndex }),
 };
 
 export default auditService;

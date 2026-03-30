@@ -15,5 +15,6 @@ router.route('/:id')
   .delete(auditController.deleteAudit);
 
 router.get('/:id/report', auditController.getAuditReport);
+router.post('/:id/explain', auditController.explainRow);
 
 module.exports = router;

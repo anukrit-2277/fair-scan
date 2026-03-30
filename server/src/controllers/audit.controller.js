@@ -3,7 +3,7 @@ const { asyncHandler, apiResponse } = require('../utils');
 const { AppError } = require('../middleware/errorHandler');
 const { parseDatasetFile } = require('../utils/parseDataset');
 const storage = require('../services/storage');
-const { metricsService, shapService, slicerService, summaryService } = require('../services/fairness');
+const { metricsService, shapService, slicerService, summaryService, explainerService } = require('../services/fairness');
 
 const triggerAudit = asyncHandler(async (req, res) => {
   const { datasetId } = req.body;
@@ -107,13 +107,15 @@ async function runAuditPipeline(auditId, dataset) {
       { name: dataset.name, rowCount: allRows.length, columnCount: columns.length }
     );
 
-    // 6. Persist results
+    // 6. Persist results + sample rows for explainer
     audit.fairnessMetrics = fairnessMetrics;
     audit.fairnessScore = fairnessScore;
     audit.shapValues = shapResult;
     audit.sliceResults = sliceResults;
     audit.biasSummary = biasSummary;
     audit.severityScore = severity;
+    audit.sampleRows = allRows.slice(0, 50);
+    audit.columnNames = columns.map((c) => c.name);
     audit.status = 'completed';
     audit.completedAt = new Date();
     await audit.save();
@@ -202,6 +204,32 @@ const getAuditReport = asyncHandler(async (req, res) => {
   });
 });
 
+const explainRow = asyncHandler(async (req, res) => {
+  const audit = await Audit.findOne({ _id: req.params.id, owner: req.user.id }).lean();
+  if (!audit) throw new AppError('Audit not found', 404);
+  if (audit.status !== 'completed') throw new AppError('Audit not yet completed', 400);
+
+  const { rowIndex } = req.body;
+  if (rowIndex == null || rowIndex < 0) throw new AppError('Valid rowIndex is required', 400);
+
+  const rows = audit.sampleRows || [];
+  if (rowIndex >= rows.length) throw new AppError(`Row ${rowIndex} not available (${rows.length} rows stored)`, 400);
+
+  const row = rows[rowIndex];
+  const dataset = await Dataset.findById(audit.dataset).lean();
+  const columns = dataset?.schemaInfo?.columns || [];
+  const protectedCols = audit.config?.protectedAttributes || [];
+  const targetCol = audit.config?.targetColumn;
+  const shapValues = audit.shapValues?.shapValues || [];
+  const useCase = audit.config?.useCase;
+
+  const explanation = await explainerService.explainDecision(
+    row, columns, targetCol, protectedCols, shapValues, useCase
+  );
+
+  apiResponse.success(res, { explanation, row, rowIndex });
+});
+
 const deleteAudit = asyncHandler(async (req, res) => {
   const audit = await Audit.findOne({ _id: req.params.id, owner: req.user.id });
   if (!audit) throw new AppError('Audit not found', 404);
@@ -210,4 +238,4 @@ const deleteAudit = asyncHandler(async (req, res) => {
   apiResponse.success(res, null, 'Audit deleted');
 });
 
-module.exports = { triggerAudit, getAudits, getAudit, getAuditReport, deleteAudit };
+module.exports = { triggerAudit, getAudits, getAudit, getAuditReport, explainRow, deleteAudit };
