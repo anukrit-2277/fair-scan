@@ -1,0 +1,38 @@
+.upload-page__header {
+  margin-bottom: var(--space-6);
+}
+
+.upload-page__title {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  margin-bottom: var(--space-1);
+}
+
+.upload-page__subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.upload-page__content {
+  margin-top: var(--space-6);
+}
+
+/* ─── Shared upload panel ─── */
+.upload-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 640px;
+}
+
+.upload-panel__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 560px) {
+  .upload-panel__row {
+    grid-template-columns: 1fr;
+  }
+}

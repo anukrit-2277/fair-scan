@@ -24,6 +24,9 @@ const datasetSchema = new mongoose.Schema(
     fileSize: {
       type: Number,
     },
+    originalName: {
+      type: String,
+    },
     schemaInfo: {
       columns: [
         {

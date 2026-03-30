@@ -1,11 +1,15 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from '../features/auth/authSlice';
 import uiReducer from './uiSlice';
+import datasetReducer from '../features/datasets/datasetSlice';
+import modelReducer from '../features/models/modelSlice';
 
 const store = configureStore({
   reducer: {
     auth: authReducer,
     ui: uiReducer,
+    datasets: datasetReducer,
+    models: modelReducer,
   },
   devTools: import.meta.env.DEV,
 });

@@ -1,4 +1,5 @@
 import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   HiOutlineCircleStack,
@@ -52,6 +53,7 @@ const fadeIn = {
 
 const DashboardHome = () => {
   const { user } = useSelector((s) => s.auth);
+  const navigate = useNavigate();
   const firstName = user?.name?.split(' ')[0] || 'there';
 
   return (
@@ -69,7 +71,9 @@ const DashboardHome = () => {
             Upload a dataset or model to start your first fairness audit.
           </p>
         </div>
-        <Button icon={<HiOutlineArrowUpRight />}>New Audit</Button>
+        <Button icon={<HiOutlineArrowUpRight />} onClick={() => navigate('/dashboard/upload')}>
+          New Upload
+        </Button>
       </motion.div>
 
       <div className="dash-home__stats">
@@ -117,21 +121,21 @@ const DashboardHome = () => {
             <h3>Quick Actions</h3>
           </div>
           <div className="dash-home__actions-list">
-            <button className="action-item">
+            <button className="action-item" onClick={() => navigate('/dashboard/upload')}>
               <span className="action-item__icon"><HiOutlineCircleStack /></span>
               <span className="action-item__text">
                 <strong>Upload Dataset</strong>
                 <small>CSV, JSON, or Google Sheets</small>
               </span>
             </button>
-            <button className="action-item">
+            <button className="action-item" onClick={() => navigate('/dashboard/upload')}>
               <span className="action-item__icon"><HiOutlineCpuChip /></span>
               <span className="action-item__text">
                 <strong>Upload Model</strong>
                 <small>ONNX, TensorFlow, scikit-learn</small>
               </span>
             </button>
-            <button className="action-item">
+            <button className="action-item" onClick={() => navigate('/dashboard/upload')}>
               <span className="action-item__icon"><HiOutlineShieldCheck /></span>
               <span className="action-item__text">
                 <strong>Connect Vertex AI</strong>

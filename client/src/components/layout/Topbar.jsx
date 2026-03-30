@@ -14,6 +14,8 @@ import './Topbar.css';
 const PAGE_TITLES = {
   '/dashboard': 'Overview',
   '/dashboard/datasets': 'Datasets',
+  '/dashboard/upload': 'Upload',
+  '/dashboard/datasets': 'Datasets & Models',
   '/dashboard/audits': 'Audits',
   '/dashboard/reports': 'Reports',
   '/dashboard/mitigation': 'Mitigation',
