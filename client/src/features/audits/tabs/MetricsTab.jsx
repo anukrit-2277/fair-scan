@@ -50,10 +50,11 @@ const MetricsTab = ({ audit }) => {
   const groupRateData = useMemo(() => {
     const dp = currentMetrics.demographicParity;
     if (!dp?.groups) return [];
-    return Object.entries(dp.groups).map(([group, rate]) => ({
+    return Object.entries(dp.groups).map(([group, data]) => ({
       group: group.length > 14 ? group.slice(0, 12) + '…' : group,
       fullGroup: group,
-      rate,
+      rate: typeof data === 'number' ? data : data?.positiveRate ?? 0,
+      count: typeof data === 'object' ? data?.count : undefined,
     }));
   }, [currentMetrics]);
 

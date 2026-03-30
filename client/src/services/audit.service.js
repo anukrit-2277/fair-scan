@@ -12,6 +12,16 @@ const auditService = {
   remove: (id) => api.delete(`/audits/${id}`),
 
   explainRow: (id, rowIndex) => api.post(`/audits/${id}/explain`, { rowIndex }),
+
+  previewMitigation: (id, strategy, params) =>
+    api.post(`/audits/${id}/mitigate/preview`, { strategy, params }),
+
+  applyMitigation: (id, strategy, params) =>
+    api.post(`/audits/${id}/mitigate/apply`, { strategy, params }),
+
+  generateReport: (id) => api.get(`/audits/${id}/generate-report`),
+
+  generateModelCard: (id) => api.get(`/audits/${id}/model-card`),
 };
 
 export default auditService;

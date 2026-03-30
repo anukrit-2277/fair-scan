@@ -4,6 +4,7 @@ import uiReducer from './uiSlice';
 import datasetReducer from '../features/datasets/datasetSlice';
 import modelReducer from '../features/models/modelSlice';
 import auditReducer from '../features/audits/auditSlice';
+import monitorReducer from '../features/monitoring/monitorSlice';
 
 const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ const store = configureStore({
     datasets: datasetReducer,
     models: modelReducer,
     audits: auditReducer,
+    monitors: monitorReducer,
   },
   devTools: import.meta.env.DEV,
 });

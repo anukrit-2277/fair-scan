@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -12,6 +12,8 @@ import {
   HiOutlineEye,
   HiOutlineLightBulb,
   HiOutlineDocumentText,
+  HiOutlineWrenchScrewdriver,
+  HiOutlineDocumentArrowDown,
 } from 'react-icons/hi2';
 import { Card, Button, Spinner } from '../../components/common';
 import Tabs from '../../components/common/Tabs';
@@ -22,6 +24,8 @@ import AttributionTab from './tabs/AttributionTab';
 import SlicesTab from './tabs/SlicesTab';
 import ExplainerTab from './tabs/ExplainerTab';
 import ComplianceTab from './tabs/ComplianceTab';
+import MitigationTab from './tabs/MitigationTab';
+import ReportsTab from './tabs/ReportsTab';
 import './AuditDashboard.css';
 
 const TABS = [
@@ -30,6 +34,8 @@ const TABS = [
   { id: 'attribution', label: 'Attribution', icon: <HiOutlineChartBar /> },
   { id: 'slices', label: 'Slices', icon: <HiOutlineEye /> },
   { id: 'explainer', label: 'Explainer', icon: <HiOutlineLightBulb /> },
+  { id: 'mitigation', label: 'Mitigation', icon: <HiOutlineWrenchScrewdriver /> },
+  { id: 'reports', label: 'Reports', icon: <HiOutlineDocumentArrowDown /> },
   { id: 'compliance', label: 'Compliance', icon: <HiOutlineDocumentText /> },
 ];
 
@@ -39,6 +45,8 @@ const TAB_COMPONENTS = {
   attribution: AttributionTab,
   slices: SlicesTab,
   explainer: ExplainerTab,
+  mitigation: MitigationTab,
+  reports: ReportsTab,
   compliance: ComplianceTab,
 };
 
@@ -46,8 +54,10 @@ const AuditDashboard = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { current: audit, loading } = useSelector((s) => s.audits);
-  const [activeTab, setActiveTab] = useState('overview');
+  const initialTab = location.state?.tab || 'overview';
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   useEffect(() => {
     dispatch(fetchAudit(id));

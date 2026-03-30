@@ -3,7 +3,7 @@ const { asyncHandler, apiResponse } = require('../utils');
 const { AppError } = require('../middleware/errorHandler');
 const { parseDatasetFile } = require('../utils/parseDataset');
 const storage = require('../services/storage');
-const { metricsService, shapService, slicerService, summaryService, explainerService } = require('../services/fairness');
+const { metricsService, shapService, slicerService, summaryService, explainerService, mitigationService, reportService } = require('../services/fairness');
 
 const triggerAudit = asyncHandler(async (req, res) => {
   const { datasetId } = req.body;
@@ -230,6 +230,102 @@ const explainRow = asyncHandler(async (req, res) => {
   apiResponse.success(res, { explanation, row, rowIndex });
 });
 
+const previewMitigation = asyncHandler(async (req, res) => {
+  const audit = await Audit.findOne({ _id: req.params.id, owner: req.user.id });
+  if (!audit) throw new AppError('Audit not found', 404);
+  if (audit.status !== 'completed') throw new AppError('Audit not yet completed', 400);
+
+  const { strategy, params } = req.body;
+  if (!strategy) throw new AppError('strategy is required', 400);
+
+  const dataset = await Dataset.findById(audit.dataset);
+  if (!dataset) throw new AppError('Dataset not found', 404);
+
+  const allRows = await loadAuditRows(audit, dataset);
+  const columns = dataset.schemaInfo?.columns || [];
+  const protectedCols = audit.config?.protectedAttributes || [];
+  const targetCol = audit.config?.targetColumn;
+
+  const preview = mitigationService.previewMitigation(
+    allRows, columns, protectedCols, targetCol, strategy, params || {}
+  );
+
+  apiResponse.success(res, { preview });
+});
+
+const applyMitigation = asyncHandler(async (req, res) => {
+  const audit = await Audit.findOne({ _id: req.params.id, owner: req.user.id });
+  if (!audit) throw new AppError('Audit not found', 404);
+  if (audit.status !== 'completed') throw new AppError('Audit not yet completed', 400);
+
+  const { strategy, params } = req.body;
+  if (!strategy) throw new AppError('strategy is required', 400);
+
+  const dataset = await Dataset.findById(audit.dataset);
+  if (!dataset) throw new AppError('Dataset not found', 404);
+
+  const allRows = await loadAuditRows(audit, dataset);
+  const columns = dataset.schemaInfo?.columns || [];
+  const protectedCols = audit.config?.protectedAttributes || [];
+  const targetCol = audit.config?.targetColumn;
+
+  const preview = mitigationService.previewMitigation(
+    allRows, columns, protectedCols, targetCol, strategy, params || {}
+  );
+
+  if (!audit.mitigations) audit.mitigations = [];
+  audit.mitigations.push({
+    strategy,
+    params: params || {},
+    appliedAt: new Date(),
+    before: { score: preview.before.fairnessScore.score, severity: preview.before.severity },
+    after: { score: preview.after.fairnessScore.score, severity: preview.after.severity },
+    details: preview.strategyDetails,
+  });
+  await audit.save();
+
+  apiResponse.success(res, {
+    mitigation: audit.mitigations[audit.mitigations.length - 1],
+    preview,
+  });
+});
+
+async function loadAuditRows(audit, dataset) {
+  if (audit.sampleRows?.length) return audit.sampleRows;
+
+  const columns = dataset.schemaInfo?.columns || [];
+  if (dataset.format !== 'google_sheets' && storage.fileExists(dataset.filePath)) {
+    const fs = require('fs');
+    const content = await fs.promises.readFile(dataset.filePath, 'utf-8');
+    const ext = require('path').extname(dataset.filePath).toLowerCase();
+    if (ext === '.csv') return parseAllCSVRows(content);
+    if (ext === '.json') return parseAllJSONRows(content, columns);
+  }
+  return [];
+}
+
+const generateReport = asyncHandler(async (req, res) => {
+  const audit = await Audit.findOne({ _id: req.params.id, owner: req.user.id }).lean();
+  if (!audit) throw new AppError('Audit not found', 404);
+  if (audit.status !== 'completed') throw new AppError('Audit not yet completed', 400);
+
+  const dataset = await Dataset.findById(audit.dataset).lean();
+  const report = await reportService.generateFullReport(audit, dataset);
+
+  apiResponse.success(res, { report });
+});
+
+const generateModelCard = asyncHandler(async (req, res) => {
+  const audit = await Audit.findOne({ _id: req.params.id, owner: req.user.id }).lean();
+  if (!audit) throw new AppError('Audit not found', 404);
+  if (audit.status !== 'completed') throw new AppError('Audit not yet completed', 400);
+
+  const dataset = await Dataset.findById(audit.dataset).lean();
+  const modelCard = await reportService.generateModelCard(audit, dataset);
+
+  apiResponse.success(res, { modelCard });
+});
+
 const deleteAudit = asyncHandler(async (req, res) => {
   const audit = await Audit.findOne({ _id: req.params.id, owner: req.user.id });
   if (!audit) throw new AppError('Audit not found', 404);
@@ -238,4 +334,4 @@ const deleteAudit = asyncHandler(async (req, res) => {
   apiResponse.success(res, null, 'Audit deleted');
 });
 
-module.exports = { triggerAudit, getAudits, getAudit, getAuditReport, explainRow, deleteAudit };
+module.exports = { triggerAudit, getAudits, getAudit, getAuditReport, explainRow, previewMitigation, applyMitigation, generateReport, generateModelCard, deleteAudit };

@@ -16,5 +16,9 @@ router.route('/:id')
 
 router.get('/:id/report', auditController.getAuditReport);
 router.post('/:id/explain', auditController.explainRow);
+router.post('/:id/mitigate/preview', auditController.previewMitigation);
+router.post('/:id/mitigate/apply', auditController.applyMitigation);
+router.get('/:id/generate-report', auditController.generateReport);
+router.get('/:id/model-card', auditController.generateModelCard);
 
 module.exports = router;

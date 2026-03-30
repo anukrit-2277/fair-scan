@@ -1,12 +1,16 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   HiOutlineShieldCheck,
   HiOutlineExclamationTriangle,
   HiOutlineCheckCircle,
   HiOutlineXCircle,
+  HiOutlineSignal,
 } from 'react-icons/hi2';
-import { Card, Badge } from '../../../components/common';
+import { Card, Badge, Button } from '../../../components/common';
+import monitorService from '../../../services/monitor.service';
+import toast from 'react-hot-toast';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 14 },
@@ -61,8 +65,22 @@ const ScoreRing = ({ score, severity }) => {
 };
 
 const OverviewTab = ({ audit }) => {
+  const navigate = useNavigate();
   const summary = audit.biasSummary;
   const findings = summary?.findings || [];
+  const [enablingMonitor, setEnablingMonitor] = useState(false);
+
+  const handleEnableMonitoring = async () => {
+    setEnablingMonitor(true);
+    try {
+      await monitorService.create(audit._id);
+      toast.success('Monitoring enabled!');
+      navigate('/dashboard/monitoring');
+    } catch (err) {
+      toast.error(err.message || 'Failed to enable monitoring');
+    }
+    setEnablingMonitor(false);
+  };
 
   const metricPills = useMemo(() => {
     if (!audit?.fairnessMetrics) return [];
@@ -189,6 +207,27 @@ const OverviewTab = ({ audit }) => {
           </Card>
         </motion.div>
       )}
+
+      {/* Enable Monitoring CTA */}
+      <motion.div custom={4} initial="hidden" animate="visible" variants={fadeUp}>
+        <Card className="enable-monitoring-card">
+          <div className="enable-monitoring-card__content">
+            <HiOutlineSignal className="enable-monitoring-card__icon" />
+            <div>
+              <h4>Enable Live Monitoring</h4>
+              <p>Track fairness drift over time and receive alerts when scores degrade.</p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={handleEnableMonitoring}
+            loading={enablingMonitor}
+            icon={<HiOutlineSignal />}
+          >
+            Enable Monitoring
+          </Button>
+        </Card>
+      </motion.div>
     </div>
   );
 };

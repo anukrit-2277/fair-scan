@@ -61,6 +61,16 @@ const auditSchema = new mongoose.Schema(
     },
     sampleRows: mongoose.Schema.Types.Mixed,
     columnNames: [String],
+    mitigations: [
+      {
+        strategy: { type: String, enum: ['resample', 'reweight', 'proxy_removal', 'threshold'] },
+        params: mongoose.Schema.Types.Mixed,
+        appliedAt: Date,
+        before: { score: Number, severity: String },
+        after: { score: Number, severity: String },
+        details: mongoose.Schema.Types.Mixed,
+      },
+    ],
     completedAt: Date,
     error: String,
   },
