@@ -15,12 +15,16 @@ const inferDtype = (value) => {
   return 'string';
 };
 
-const parseCSV = (content) => {
+/**
+ * Core CSV parser — returns headers + ALL row arrays.
+ * Handles quoted fields with commas inside.
+ * Used by both preview (parseCSV) and full audit parsing.
+ */
+const parseCSVRows = (content) => {
   const lines = content.trim().split('\n');
-  if (lines.length < 2) return { columns: [], rows: [], rowCount: 0 };
+  if (lines.length < 2) return { headers: [], rows: [] };
 
-  const headerLine = lines[0];
-  const headers = headerLine.split(',').map((h) => h.trim().replace(/^["']|["']$/g, ''));
+  const headers = lines[0].split(',').map((h) => h.trim().replace(/^["']|["']$/g, ''));
 
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
@@ -44,6 +48,27 @@ const parseCSV = (content) => {
     values.push(current.trim());
     rows.push(values);
   }
+
+  return { headers, rows };
+};
+
+/**
+ * Core JSON parser — returns ALL row arrays given column names.
+ * Supports arrays, or objects with .data/.records/.rows keys.
+ */
+const parseJSONRows = (content, columnNames) => {
+  const data = JSON.parse(content);
+  const arr = Array.isArray(data) ? data : data.data || data.records || data.rows || [data];
+  return arr.map((row) => columnNames.map((k) => row[k] ?? ''));
+};
+
+/**
+ * High-level CSV parser — detects schema + returns 20 preview rows.
+ * Delegates to parseCSVRows for the actual parsing.
+ */
+const parseCSV = (content) => {
+  const { headers, rows } = parseCSVRows(content);
+  if (!headers.length) return { columns: [], rows: [], rowCount: 0 };
 
   const sampleSize = Math.min(100, rows.length);
   const dtypes = headers.map((_, colIdx) => {
@@ -72,6 +97,9 @@ const parseCSV = (content) => {
   };
 };
 
+/**
+ * High-level JSON parser — detects schema + returns 20 preview rows.
+ */
 const parseJSON = (content) => {
   const data = JSON.parse(content);
   const arr = Array.isArray(data) ? data : data.data || data.records || data.rows || [data];
@@ -114,4 +142,4 @@ const parseDatasetFile = async (filePath) => {
   throw new Error(`Unsupported dataset format: ${ext}`);
 };
 
-module.exports = { parseDatasetFile, parseCSV, parseJSON };
+module.exports = { parseDatasetFile, parseCSV, parseJSON, parseCSVRows, parseJSONRows };

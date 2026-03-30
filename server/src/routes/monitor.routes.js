@@ -1,5 +1,5 @@
 const express = require('express');
-const monitorController = require('../controllers/monitor.controller');
+const { monitorController } = require('../controllers');
 const { protect } = require('../middleware');
 
 const router = express.Router();

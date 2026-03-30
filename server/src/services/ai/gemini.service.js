@@ -39,8 +39,13 @@ const generateJSON = async (prompt, systemInstruction, retries = 3) => {
       return JSON.parse(text);
     } catch (err) {
       lastError = err;
-      const status = err?.status || err?.message?.includes('429') || JSON.stringify(err).includes('429');
-      if (status && attempt < retries - 1) continue;
+      let isRateLimited = err?.status === 429;
+      if (!isRateLimited) {
+        try {
+          isRateLimited = !!err?.message?.includes?.('429');
+        } catch { isRateLimited = false; }
+      }
+      if (isRateLimited && attempt < retries - 1) continue;
       throw err;
     }
   }

@@ -5,6 +5,7 @@
  */
 
 const { groupBy, isPositive } = require('./metrics.service');
+const { round4, round2 } = require('../../utils/math');
 
 /**
  * Compute per-slice metrics for a single protected attribute.
@@ -117,7 +118,6 @@ const computeSliceEvaluation = (rows, columns, protectedCols, targetCol) => {
   };
 };
 
-const round2 = (n) => Math.round(n * 100) / 100;
-const round4 = (n) => Math.round(n * 10000) / 10000;
+// round2 and round4 imported from shared utils at top of file
 
 module.exports = { computeSliceEvaluation, sliceMetrics, intersectionalSlices };

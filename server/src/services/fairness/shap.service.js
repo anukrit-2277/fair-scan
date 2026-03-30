@@ -6,6 +6,7 @@
 
 const { generateJSON } = require('../ai/gemini.service');
 const { isPositive } = require('./metrics.service');
+const { round4 } = require('../../utils/math');
 
 /**
  * Compute point-biserial-style correlation between each feature and
@@ -169,6 +170,6 @@ const chiSquareApprox = (distA, distB, nA, nB) => {
   return Math.min(Math.sqrt(chi / (chi + nA + nB)), 1);
 };
 
-const round4 = (n) => Math.round(n * 10000) / 10000;
+// round4 imported from shared utils at top of file
 
 module.exports = { computeFeatureAttribution, computeFeatureCorrelations };

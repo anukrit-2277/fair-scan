@@ -1,7 +1,9 @@
+const fs = require('fs');
+const path = require('path');
 const { Audit, Dataset } = require('../models');
 const { asyncHandler, apiResponse } = require('../utils');
 const { AppError } = require('../middleware/errorHandler');
-const { parseDatasetFile } = require('../utils/parseDataset');
+const { parseDatasetFile, parseCSVRows, parseJSONRows } = require('../utils/parseDataset');
 const storage = require('../services/storage');
 const { metricsService, shapService, slicerService, summaryService, explainerService, mitigationService, reportService } = require('../services/fairness');
 
@@ -47,28 +49,52 @@ const triggerAudit = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * Read ALL rows from a dataset file.
+ * Uses the shared parsers from parseDataset.js — single source of truth.
+ */
+async function readAllDatasetRows(dataset) {
+  if (dataset.format === 'google_sheets' || !storage.fileExists(dataset.filePath)) {
+    return [];
+  }
+
+  const content = await fs.promises.readFile(dataset.filePath, 'utf-8');
+  const ext = path.extname(dataset.filePath).toLowerCase();
+  const columns = dataset.schemaInfo?.columns || [];
+
+  if (ext === '.csv') {
+    const { headers, rows } = parseCSVRows(content);
+
+    // Validate that CSV headers match the stored schema to prevent silent mis-alignment
+    const schemaNames = columns.map((c) => c.name);
+    if (headers.length && schemaNames.length && headers.length !== schemaNames.length) {
+      throw new Error(
+        `CSV column count mismatch: file has ${headers.length} columns but schema has ${schemaNames.length}`
+      );
+    }
+    const mismatched = schemaNames.filter((name, i) => headers[i] && headers[i] !== name);
+    if (mismatched.length) {
+      throw new Error(
+        `CSV header mismatch: columns [${mismatched.join(', ')}] do not match file headers. Re-upload or re-analyze the dataset.`
+      );
+    }
+
+    return rows;
+  }
+  if (ext === '.json') {
+    return parseJSONRows(content, columns.map((c) => c.name));
+  }
+
+  return [];
+}
+
 async function runAuditPipeline(auditId, dataset) {
   const audit = await Audit.findById(auditId);
   if (!audit) return;
 
   try {
-    let allRows = [];
     const columns = dataset.schemaInfo?.columns || [];
-
-    if (dataset.format !== 'google_sheets' && storage.fileExists(dataset.filePath)) {
-      const parsed = await parseDatasetFile(dataset.filePath);
-      allRows = parsed.rows;
-
-      // parseDatasetFile only returns 20 rows for preview — re-parse fully
-      const fs = require('fs');
-      const content = await fs.promises.readFile(dataset.filePath, 'utf-8');
-      const ext = require('path').extname(dataset.filePath).toLowerCase();
-      if (ext === '.csv') {
-        allRows = parseAllCSVRows(content);
-      } else if (ext === '.json') {
-        allRows = parseAllJSONRows(content, columns);
-      }
-    }
+    const allRows = await readAllDatasetRows(dataset);
 
     if (!allRows.length) {
       throw new Error('No data rows available for analysis');
@@ -126,48 +152,6 @@ async function runAuditPipeline(auditId, dataset) {
     await audit.save();
     console.error(`[Audit ${auditId}] Pipeline failed:`, err.message);
   }
-}
-
-/**
- * Parse ALL CSV rows (not just 20 for preview).
- */
-function parseAllCSVRows(content) {
-  const lines = content.trim().split('\n');
-  if (lines.length < 2) return [];
-
-  const rows = [];
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    const values = [];
-    let current = '';
-    let inQuotes = false;
-    for (let c = 0; c < line.length; c++) {
-      const ch = line[c];
-      if (ch === '"' && (c === 0 || line[c - 1] !== '\\')) {
-        inQuotes = !inQuotes;
-      } else if (ch === ',' && !inQuotes) {
-        values.push(current.trim());
-        current = '';
-      } else {
-        current += ch;
-      }
-    }
-    values.push(current.trim());
-    rows.push(values);
-  }
-  return rows;
-}
-
-/**
- * Parse ALL JSON rows.
- */
-function parseAllJSONRows(content, columns) {
-  const data = JSON.parse(content);
-  const arr = Array.isArray(data) ? data : data.data || data.records || data.rows || [data];
-  const keys = columns.map((c) => c.name);
-  return arr.map((row) => keys.map((k) => row[k] ?? ''));
 }
 
 const getAudits = asyncHandler(async (req, res) => {
@@ -290,18 +274,13 @@ const applyMitigation = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * Load all rows for an audit — uses stored sample rows first,
+ * falls back to reading from disk via the shared parsers.
+ */
 async function loadAuditRows(audit, dataset) {
   if (audit.sampleRows?.length) return audit.sampleRows;
-
-  const columns = dataset.schemaInfo?.columns || [];
-  if (dataset.format !== 'google_sheets' && storage.fileExists(dataset.filePath)) {
-    const fs = require('fs');
-    const content = await fs.promises.readFile(dataset.filePath, 'utf-8');
-    const ext = require('path').extname(dataset.filePath).toLowerCase();
-    if (ext === '.csv') return parseAllCSVRows(content);
-    if (ext === '.json') return parseAllJSONRows(content, columns);
-  }
-  return [];
+  return readAllDatasetRows(dataset);
 }
 
 const generateReport = asyncHandler(async (req, res) => {

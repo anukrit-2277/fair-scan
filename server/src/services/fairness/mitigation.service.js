@@ -12,8 +12,7 @@
 
 const metricsService = require('./metrics.service');
 const { groupBy, isPositive } = metricsService;
-
-const round4 = (n) => Math.round(n * 10000) / 10000;
+const { round4 } = require('../../utils/math');
 
 /* ═══════════════════════════════════════════
    1. RESAMPLING
@@ -86,6 +85,21 @@ const reweight = (rows, columns, protectedCol, targetCol) => {
   });
 
   return { weights: rowWeights, groupWeights };
+};
+
+/**
+ * Apply sample weights by converting them to resampled rows.
+ * Weight > 1 means duplicate; weight < 1 means probabilistic inclusion.
+ */
+const applyWeightsAsResampling = (rows, weights) => {
+  const resampled = [];
+  for (let i = 0; i < rows.length; i++) {
+    const copies = Math.max(1, Math.round(weights[i]));
+    for (let c = 0; c < copies; c++) {
+      resampled.push(rows[i]);
+    }
+  }
+  return resampled;
 };
 
 /* ═══════════════════════════════════════════
@@ -167,6 +181,8 @@ const previewMitigation = (rows, columns, protectedCols, targetCol, strategy, pa
     case 'reweight': {
       const attr = params.attribute || protectedCols[0];
       const result = reweight(rows, columns, attr, targetCol);
+      // Apply weights as resampling so after-metrics reflect the effect
+      mitigatedRows = applyWeightsAsResampling(rows, result.weights);
       strategyDetails = { attribute: attr, groupWeights: result.groupWeights };
       break;
     }

@@ -149,25 +149,17 @@ const confirmConfig = asyncHandler(async (req, res) => {
     dataset.schemaInfo.columns = columns;
   }
 
-  if (useCase) {
-    dataset.analysis = {
-      ...dataset.analysis?.toObject?.() || {},
-      useCase,
-    };
-  }
+  // Build a single update object to avoid sequential spread data loss
+  const currentAnalysis = dataset.analysis?.toObject?.() || dataset.analysis || {};
+  const updatedAnalysis = { ...currentAnalysis };
 
-  if (targetColumn !== undefined) {
-    dataset.analysis = {
-      ...dataset.analysis?.toObject?.() || {},
-      targetColumn,
-    };
-  }
+  if (useCase) updatedAnalysis.useCase = useCase;
+  if (targetColumn !== undefined) updatedAnalysis.targetColumn = targetColumn;
 
-  dataset.analysis = {
-    ...dataset.analysis?.toObject?.() || {},
-    confirmed: true,
-    confirmedAt: new Date(),
-  };
+  updatedAnalysis.confirmed = true;
+  updatedAnalysis.confirmedAt = new Date();
+
+  dataset.analysis = updatedAnalysis;
   dataset.status = 'confirmed';
   await dataset.save();
 

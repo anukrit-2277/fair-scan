@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
 const { env } = require('./config');
 const { errorHandler, AppError } = require('./middleware');
 const routes = require('./routes');
@@ -19,6 +20,7 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(mongoSanitize()); // Strip $ and . from req.body/params/query to prevent NoSQL injection
 
 // --------------- Logging ---------------
 if (env.NODE_ENV === 'development') {

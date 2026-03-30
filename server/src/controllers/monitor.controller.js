@@ -1,8 +1,24 @@
-const { Audit } = require('../models');
+const mongoose = require('mongoose');
+const { Audit, Dataset } = require('../models');
 const Monitor = require('../models/Monitor');
 const { asyncHandler, apiResponse } = require('../utils');
 const { AppError } = require('../middleware/errorHandler');
 const { metricsService } = require('../services/fairness');
+
+/**
+ * Count passing/failing fairness metrics from an audit's fairnessMetrics map.
+ */
+const countPassingMetrics = (fairnessMetrics) => {
+  let passing = 0;
+  let total = 0;
+  for (const m of Object.values(fairnessMetrics || {})) {
+    if (m?.demographicParity) { total++; if (m.demographicParity.pass) passing++; }
+    if (m?.equalOpportunity) { total++; if (m.equalOpportunity.pass) passing++; }
+    if (m?.predictiveParity) { total++; if (m.predictiveParity.pass) passing++; }
+    if (m?.disparateImpact) { total++; if (m.disparateImpact.pass) passing++; }
+  }
+  return { passing, total };
+};
 
 const createMonitor = asyncHandler(async (req, res) => {
   const { auditId, config } = req.body;
@@ -17,11 +33,7 @@ const createMonitor = asyncHandler(async (req, res) => {
 
   const score = audit.fairnessScore?.score ?? 0;
   const severity = audit.severityScore || metricsService.deriveSeverity(score);
-  const passing = Object.values(audit.fairnessMetrics || {}).reduce((sum, m) => {
-    return sum + (m?.demographicParity?.pass ? 1 : 0) + (m?.equalOpportunity?.pass ? 1 : 0)
-      + (m?.predictiveParity?.pass ? 1 : 0) + (m?.disparateImpact?.pass ? 1 : 0);
-  }, 0);
-  const totalMetrics = Object.keys(audit.fairnessMetrics || {}).length * 4;
+  const { passing, total: totalMetrics } = countPassingMetrics(audit.fairnessMetrics);
 
   const monitor = await Monitor.create({
     owner: req.user.id,
@@ -77,6 +89,7 @@ const refreshMonitor = asyncHandler(async (req, res) => {
     ? monitor.snapshots[monitor.snapshots.length - 1].fairnessScore
     : baseScore;
 
+  // NOTE: Simulated drift — replace with real Vertex AI Model Monitor when available
   const drift = (Math.random() - 0.5) * 8;
   const newScore = Math.max(0, Math.min(100, Math.round((lastScore + drift) * 100) / 100));
   const severity = metricsService.deriveSeverity(newScore);
@@ -106,17 +119,13 @@ const refreshMonitor = asyncHandler(async (req, res) => {
     });
   }
 
-  const passing = Object.values(audit.fairnessMetrics || {}).reduce((sum, m) => {
-    return sum + (m?.demographicParity?.pass ? 1 : 0) + (m?.equalOpportunity?.pass ? 1 : 0)
-      + (m?.predictiveParity?.pass ? 1 : 0) + (m?.disparateImpact?.pass ? 1 : 0);
-  }, 0);
-  const totalMetrics = Object.keys(audit.fairnessMetrics || {}).length * 4;
+  const { passing, total: totalMetrics } = countPassingMetrics(audit.fairnessMetrics);
 
   monitor.snapshots.push({
     fairnessScore: newScore,
     severity,
-    metricsPassing: passing + Math.floor(drift > 0 ? 1 : 0),
-    metricsFailing: totalMetrics - passing - Math.floor(drift > 0 ? 1 : 0),
+    metricsPassing: passing,
+    metricsFailing: totalMetrics - passing,
     recordedAt: new Date(),
   });
 
@@ -128,7 +137,7 @@ const refreshMonitor = asyncHandler(async (req, res) => {
   monitor.lastCheckedAt = new Date();
   await monitor.save();
 
-  apiResponse.success(res, { monitor: monitor.toObject() });
+  apiResponse.success(res, { monitor: monitor.toObject(), simulated: true });
 });
 
 const acknowledgeAlert = asyncHandler(async (req, res) => {
@@ -168,8 +177,6 @@ const deleteMonitor = asyncHandler(async (req, res) => {
 
 const getDashboardStats = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const mongoose = require('mongoose');
-  const Dataset = require('../models/Dataset');
 
   const [datasetCount, auditCount, audits, monitorCount] = await Promise.all([
     Dataset.countDocuments({ owner: userId }),
