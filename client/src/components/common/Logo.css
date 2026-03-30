@@ -1,0 +1,24 @@
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  user-select: none;
+}
+
+.logo__text {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  background: linear-gradient(135deg, var(--color-text-primary) 0%, var(--color-accent-text) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.logo--sm .logo__text {
+  font-size: var(--text-lg);
+}
+
+.logo--lg .logo__text {
+  font-size: var(--text-2xl);
+}
