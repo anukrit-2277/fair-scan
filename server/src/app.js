@@ -4,10 +4,30 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize');
 const { env } = require('./config');
 const { errorHandler, AppError } = require('./middleware');
 const routes = require('./routes');
+
+// Custom sanitizer to strip $ and . keys (NoSQL injection prevention)
+// express-mongo-sanitize v2 is incompatible with Express 5 (req.query is read-only)
+const sanitize = (obj) => {
+  if (obj && typeof obj === 'object') {
+    for (const key of Object.keys(obj)) {
+      if (key.startsWith('$') || key.includes('.')) {
+        delete obj[key];
+      } else {
+        sanitize(obj[key]);
+      }
+    }
+  }
+  return obj;
+};
+
+const mongoSanitize = (req, _res, next) => {
+  if (req.body) sanitize(req.body);
+  if (req.params) sanitize(req.params);
+  next();
+};
 
 const app = express();
 
@@ -20,7 +40,7 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(mongoSanitize()); // Strip $ and . from req.body/params/query to prevent NoSQL injection
+app.use(mongoSanitize); // Strip $ and . from req.body/params to prevent NoSQL injection
 
 // --------------- Logging ---------------
 if (env.NODE_ENV === 'development') {
