@@ -32,6 +32,7 @@ import {
   updateCurrentColumns,
   updateCurrentAnalysis,
 } from '../datasets/datasetSlice';
+import { triggerAudit } from '../audits/auditSlice';
 import './ConfigReviewPage.css';
 
 const DOMAIN_ICONS = {
@@ -151,6 +152,7 @@ const ConfigReviewPage = () => {
   const { current: dataset, loading, analyzing, confirming } = useSelector((s) => s.datasets);
 
   const [editing, setEditing] = useState(false);
+  const { triggering } = useSelector((s) => s.audits);
 
   useEffect(() => {
     dispatch(fetchDataset(id));
@@ -209,6 +211,16 @@ const ConfigReviewPage = () => {
     }
   };
 
+  const handleRunAudit = async () => {
+    try {
+      const audit = await dispatch(triggerAudit(id)).unwrap();
+      toast.success('Audit started!');
+      navigate(`/dashboard/audits/${audit._id}`);
+    } catch (err) {
+      toast.error(typeof err === 'string' ? err : 'Failed to start audit');
+    }
+  };
+
   if (loading || !dataset) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-16) 0' }}>
@@ -246,6 +258,12 @@ const ConfigReviewPage = () => {
                 Confirm Config
               </Button>
             </>
+          )}
+          {isConfirmed && !editing && (
+            <Button variant="primary" size="sm" onClick={handleRunAudit} loading={triggering}>
+              <HiOutlineCpuChip style={{ marginRight: 6 }} />
+              Run Fairness Audit
+            </Button>
           )}
           {isConfirmed && (
             <Button variant="ghost" size="sm" onClick={() => setEditing(!editing)}>

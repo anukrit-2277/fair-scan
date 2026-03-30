@@ -24,6 +24,7 @@ const PAGE_TITLES = {
 
 const getDynamicTitle = (pathname) => {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
+  if (/\/dashboard\/audits\/[^/]+/.test(pathname)) return 'Audit Report';
   if (/\/dashboard\/datasets\/[^/]+\/analyze/.test(pathname)) return 'Auto-Detect Config';
   if (/\/dashboard\/datasets\/[^/]+/.test(pathname)) return 'Dataset Detail';
   return 'Dashboard';

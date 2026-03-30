@@ -3,6 +3,7 @@ import authReducer from '../features/auth/authSlice';
 import uiReducer from './uiSlice';
 import datasetReducer from '../features/datasets/datasetSlice';
 import modelReducer from '../features/models/modelSlice';
+import auditReducer from '../features/audits/auditSlice';
 
 const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ const store = configureStore({
     ui: uiReducer,
     datasets: datasetReducer,
     models: modelReducer,
+    audits: auditReducer,
   },
   devTools: import.meta.env.DEV,
 });

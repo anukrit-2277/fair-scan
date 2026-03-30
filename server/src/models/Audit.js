@@ -10,7 +10,9 @@ const auditSchema = new mongoose.Schema(
     dataset: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Dataset',
+      required: true,
     },
+    datasetName: String,
     modelRef: {
       type: String,
       trim: true,
@@ -20,40 +22,50 @@ const auditSchema = new mongoose.Schema(
       enum: ['pending', 'analyzing', 'completed', 'failed'],
       default: 'pending',
     },
-    fairnessMetrics: {
-      demographicParity: mongoose.Schema.Types.Mixed,
-      equalOpportunity: mongoose.Schema.Types.Mixed,
-      predictiveParity: mongoose.Schema.Types.Mixed,
-      disparateImpact: mongoose.Schema.Types.Mixed,
+    config: {
+      targetColumn: String,
+      protectedAttributes: [String],
+      useCase: String,
     },
-    sliceResults: [mongoose.Schema.Types.Mixed],
+    fairnessScore: {
+      score: Number,
+      penalties: [String],
+    },
+    fairnessMetrics: mongoose.Schema.Types.Mixed,
+    sliceResults: mongoose.Schema.Types.Mixed,
     shapValues: mongoose.Schema.Types.Mixed,
     biasSummary: {
-      type: String,
+      executiveSummary: String,
+      findings: [
+        {
+          title: String,
+          description: String,
+          severity: { type: String, enum: ['low', 'medium', 'high', 'critical'] },
+          affectedGroups: [String],
+          recommendation: String,
+        },
+      ],
+      overallRiskLevel: { type: String, enum: ['low', 'medium', 'high', 'critical'] },
+      complianceNotes: [
+        {
+          regulation: String,
+          relevance: String,
+          riskLevel: { type: String, enum: ['low', 'medium', 'high'] },
+        },
+      ],
     },
     severityScore: {
       type: String,
       enum: ['low', 'medium', 'high', 'critical', null],
       default: null,
     },
-    complianceFlags: [
-      {
-        regulation: String,
-        article: String,
-        riskLevel: { type: String, enum: ['low', 'medium', 'high'] },
-        description: String,
-      },
-    ],
-    mitigations: [
-      {
-        type: { type: String },
-        appliedAt: Date,
-        beforeMetrics: mongoose.Schema.Types.Mixed,
-        afterMetrics: mongoose.Schema.Types.Mixed,
-      },
-    ],
+    completedAt: Date,
+    error: String,
   },
   { timestamps: true }
 );
+
+auditSchema.index({ owner: 1, createdAt: -1 });
+auditSchema.index({ dataset: 1 });
 
 module.exports = mongoose.model('Audit', auditSchema);

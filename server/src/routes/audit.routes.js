@@ -11,7 +11,8 @@ router.route('/')
   .post(auditController.triggerAudit);
 
 router.route('/:id')
-  .get(auditController.getAudit);
+  .get(auditController.getAudit)
+  .delete(auditController.deleteAudit);
 
 router.get('/:id/report', auditController.getAuditReport);
 

@@ -1,0 +1,112 @@
+.audits-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: var(--max-content-width);
+}
+
+.audits-list__header h2 {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.audits-list__header p {
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  margin: var(--space-1) 0 0;
+}
+
+.audits-list__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-12) var(--space-8);
+  text-align: center;
+  color: var(--color-text-tertiary);
+}
+
+.audits-list__empty svg {
+  font-size: 2.5rem;
+  color: var(--color-text-disabled);
+}
+
+.audits-list__empty h3 {
+  font-size: var(--text-lg);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.audits-list__empty p {
+  font-size: var(--text-sm);
+  max-width: 360px;
+  margin: 0;
+}
+
+.audits-list__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--space-4);
+}
+
+.audit-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.audit-card__top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.audit-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.audit-card__info h4 {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-1);
+}
+
+.audit-card__date {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.audit-card__metrics {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.audit-card__score {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+}
+
+.audit-card__score strong {
+  color: var(--color-text-primary);
+}
+
+.audit-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: auto;
+}
