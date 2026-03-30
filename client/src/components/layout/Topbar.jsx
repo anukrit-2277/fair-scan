@@ -13,7 +13,6 @@ import './Topbar.css';
 
 const PAGE_TITLES = {
   '/dashboard': 'Overview',
-  '/dashboard/datasets': 'Datasets',
   '/dashboard/upload': 'Upload',
   '/dashboard/datasets': 'Datasets & Models',
   '/dashboard/audits': 'Audits',
@@ -21,6 +20,13 @@ const PAGE_TITLES = {
   '/dashboard/mitigation': 'Mitigation',
   '/dashboard/monitoring': 'Monitoring',
   '/dashboard/settings': 'Settings',
+};
+
+const getDynamicTitle = (pathname) => {
+  if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
+  if (/\/dashboard\/datasets\/[^/]+\/analyze/.test(pathname)) return 'Auto-Detect Config';
+  if (/\/dashboard\/datasets\/[^/]+/.test(pathname)) return 'Dataset Detail';
+  return 'Dashboard';
 };
 
 const Topbar = () => {
@@ -32,7 +38,7 @@ const Topbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
-  const pageTitle = PAGE_TITLES[location.pathname] || 'Dashboard';
+  const pageTitle = getDynamicTitle(location.pathname);
 
   useEffect(() => {
     const handleClickOutside = (e) => {

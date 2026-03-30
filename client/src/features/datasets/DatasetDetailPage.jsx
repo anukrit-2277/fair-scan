@@ -7,6 +7,7 @@ import {
   HiOutlineTrash,
   HiOutlineTableCells,
   HiOutlineShieldCheck,
+  HiOutlineSparkles,
 } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
 import { Card, Badge, Button, Spinner } from '../../components/common';
@@ -57,9 +58,14 @@ const DatasetDetailPage = () => {
         <Button variant="ghost" size="sm" icon={<HiOutlineArrowLeft />} onClick={() => navigate('/dashboard/datasets')}>
           Back
         </Button>
-        <Button variant="danger" size="sm" icon={<HiOutlineTrash />} onClick={handleDelete}>
-          Delete
-        </Button>
+        <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+          <Button variant="primary" size="sm" icon={<HiOutlineSparkles />} onClick={() => navigate(`/dashboard/datasets/${id}/analyze`)}>
+            {dataset.status === 'analyzed' || dataset.status === 'confirmed' ? 'View Config' : 'Auto-Detect'}
+          </Button>
+          <Button variant="danger" size="sm" icon={<HiOutlineTrash />} onClick={handleDelete}>
+            Delete
+          </Button>
+        </div>
       </div>
 
       <div className="ds-detail__header">

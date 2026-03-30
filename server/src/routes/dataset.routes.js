@@ -17,4 +17,7 @@ router.route('/:id')
   .get(datasetController.getDataset)
   .delete(datasetController.deleteDataset);
 
+router.post('/:id/analyze', datasetController.analyzeDataset);
+router.put('/:id/confirm', datasetController.confirmConfig);
+
 module.exports = router;

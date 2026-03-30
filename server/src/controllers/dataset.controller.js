@@ -4,11 +4,10 @@ const { asyncHandler, apiResponse } = require('../utils');
 const { parseDatasetFile } = require('../utils/parseDataset');
 const { AppError } = require('../middleware/errorHandler');
 const storage = require('../services/storage');
+const { analysisService } = require('../services/ai');
 
 const uploadDataset = asyncHandler(async (req, res) => {
-  if (!req.file) {
-    throw new AppError('No file uploaded', 400);
-  }
+  if (!req.file) throw new AppError('No file uploaded', 400);
 
   const ext = path.extname(req.file.originalname).toLowerCase().replace('.', '');
   const formatMap = { csv: 'csv', json: 'json' };
@@ -37,10 +36,7 @@ const uploadDataset = asyncHandler(async (req, res) => {
     status: 'ready',
   });
 
-  apiResponse.created(res, {
-    dataset,
-    preview,
-  }, 'Dataset uploaded successfully');
+  apiResponse.created(res, { dataset, preview }, 'Dataset uploaded successfully');
 });
 
 const uploadGoogleSheet = asyncHandler(async (req, res) => {
@@ -73,11 +69,7 @@ const getDatasets = asyncHandler(async (req, res) => {
 });
 
 const getDataset = asyncHandler(async (req, res) => {
-  const dataset = await Dataset.findOne({
-    _id: req.params.id,
-    owner: req.user.id,
-  });
-
+  const dataset = await Dataset.findOne({ _id: req.params.id, owner: req.user.id });
   if (!dataset) throw new AppError('Dataset not found', 404);
 
   let preview = [];
@@ -92,20 +84,102 @@ const getDataset = asyncHandler(async (req, res) => {
 });
 
 const deleteDataset = asyncHandler(async (req, res) => {
-  const dataset = await Dataset.findOne({
-    _id: req.params.id,
-    owner: req.user.id,
-  });
-
+  const dataset = await Dataset.findOne({ _id: req.params.id, owner: req.user.id });
   if (!dataset) throw new AppError('Dataset not found', 404);
 
-  if (dataset.format !== 'google_sheets') {
-    await storage.deleteFile(dataset.filePath);
-  }
-
+  if (dataset.format !== 'google_sheets') await storage.deleteFile(dataset.filePath);
   await Dataset.deleteOne({ _id: dataset._id });
 
   apiResponse.success(res, null, 'Dataset deleted');
 });
 
-module.exports = { uploadDataset, uploadGoogleSheet, getDatasets, getDataset, deleteDataset };
+// ─── Phase 3: Auto-detect analysis ───
+
+const analyzeDataset = asyncHandler(async (req, res) => {
+  const dataset = await Dataset.findOne({ _id: req.params.id, owner: req.user.id });
+  if (!dataset) throw new AppError('Dataset not found', 404);
+
+  if (!dataset.schemaInfo?.columns?.length) {
+    throw new AppError('Dataset has no schema — upload a valid file first', 400);
+  }
+
+  dataset.status = 'analyzing';
+  await dataset.save();
+
+  let sampleRows = [];
+  if (dataset.format !== 'google_sheets' && storage.fileExists(dataset.filePath)) {
+    try {
+      const parsed = await parseDatasetFile(dataset.filePath);
+      sampleRows = parsed.rows;
+    } catch { /* continue without sample */ }
+  }
+
+  try {
+    const result = await analysisService.analyzeDataset(
+      dataset.schemaInfo.columns.map((c) => ({ name: c.name, dtype: c.dtype })),
+      sampleRows
+    );
+
+    dataset.schemaInfo.columns = result.columns;
+    dataset.analysis = {
+      useCase: result.useCase,
+      targetColumn: result.targetColumn,
+      summary: result.summary,
+      analyzedAt: new Date(),
+      confirmed: false,
+    };
+    dataset.status = 'analyzed';
+    await dataset.save();
+
+    apiResponse.success(res, { dataset }, 'Analysis complete');
+  } catch (err) {
+    dataset.status = 'ready';
+    await dataset.save();
+    throw new AppError(`Analysis failed: ${err.message}`, 500);
+  }
+});
+
+const confirmConfig = asyncHandler(async (req, res) => {
+  const dataset = await Dataset.findOne({ _id: req.params.id, owner: req.user.id });
+  if (!dataset) throw new AppError('Dataset not found', 404);
+
+  const { columns, useCase, targetColumn } = req.body;
+
+  if (columns && Array.isArray(columns)) {
+    dataset.schemaInfo.columns = columns;
+  }
+
+  if (useCase) {
+    dataset.analysis = {
+      ...dataset.analysis?.toObject?.() || {},
+      useCase,
+    };
+  }
+
+  if (targetColumn !== undefined) {
+    dataset.analysis = {
+      ...dataset.analysis?.toObject?.() || {},
+      targetColumn,
+    };
+  }
+
+  dataset.analysis = {
+    ...dataset.analysis?.toObject?.() || {},
+    confirmed: true,
+    confirmedAt: new Date(),
+  };
+  dataset.status = 'confirmed';
+  await dataset.save();
+
+  apiResponse.success(res, { dataset }, 'Configuration confirmed');
+});
+
+module.exports = {
+  uploadDataset,
+  uploadGoogleSheet,
+  getDatasets,
+  getDataset,
+  deleteDataset,
+  analyzeDataset,
+  confirmConfig,
+};

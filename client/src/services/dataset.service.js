@@ -23,6 +23,10 @@ const datasetService = {
   getById: (id) => api.get(`/datasets/${id}`),
 
   remove: (id) => api.delete(`/datasets/${id}`),
+
+  analyze: (id) => api.post(`/datasets/${id}/analyze`),
+
+  confirmConfig: (id, config) => api.put(`/datasets/${id}/confirm`, config),
 };
 
 export default datasetService;
